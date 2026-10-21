@@ -1,0 +1,41 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+
+# İşletim sistemi / editör
+.DS_Store
+~$*
+*.tmp
+
+# Loglar (isteğe bağlı — teslimde tutmak isterseniz bu satırı silin)
+# logs/
+# Büyük dosyalar / model ağırlıkları / veri setleri
+*.zip
+*.pt
+*.pth
+*.ckpt
+*.safetensors
+*.bin
+*.h5
+*.onnx
+data/
+datasets/
+models/
+
+# Gizli bilgiler
+.env
+.env.*
+*.pem
+*.key
+secrets.*
+credentials.*
+
+# Node
+node_modules/
+
+# Kasıtlı olarak depoya alınmayanlar (yerelde duruyor)
+belgeler/
+arsiv/
