@@ -1,150 +1,154 @@
-# İHA (Drone) LLM Pilot Asistanı — Prototip
+# UAV (Drone) LLM Pilot Assistant — Prototype
 
-Büyük dil modeli (LLM) tabanlı bir İHA pilot asistanı prototipi. Amaç gerçek bir uçuş kontrol yazılımı **değil**; LLM/agent mantığını, telemetri farkındalığını, komut doğrulamayı ve güvenlik katmanını gösteren, uçtan uca çalışan küçük bir sistemdir.
+A prototype UAV pilot assistant built on a large language model (LLM). It is **not** real flight-control software; it is a small, end-to-end working system that demonstrates LLM/agent logic, telemetry awareness, command validation and a safety layer.
 
-**Temel güvenlik ilkesi:** LLM hiçbir zaman düşük seviyeli kontrol kodlarına (PWM, ham hız, roll/pitch/yaw) erişmez. Yalnızca önceden tanımlı güvenli fonksiyonları (`get_telemetry`, `takeoff`, `land`, `return_to_home`, `go_to`, `move`, `get_energy_status`, `avoid_obstacle`) tetikleyebilir ve her komut uygulanmadan önce bir güvenlik katmanından geçer.
+**Core safety principle:** the LLM never has access to low-level control (PWM, raw velocity, roll/pitch/yaw). It can only trigger predefined safe functions (`get_telemetry`, `takeoff`, `land`, `return_to_home`, `go_to`, `move`, `get_energy_status`, `avoid_obstacle`), and every command passes through a safety layer before it is executed.
 
-## Mimari
+> **Note:** the assistant's natural-language interface understands **Turkish** commands. The examples below show the Turkish input together with its English meaning.
+
+## Architecture
 
 ```
-Doğal dil komutu
+Natural-language command
       │
       ▼
-┌─────────────────┐   Hibrit NLU (kural tabanlı veya opsiyonel gerçek LLM)
-│  agent.py       │──▶ komutu tool call'a çevirir + çok-adımlı planlama
+┌─────────────────┐   Hybrid NLU (rule-based or optional real LLM)
+│  agent.py       │──▶ turns the command into tool calls + multi-step planning
 └─────────────────┘
       │
       ▼
-┌─────────────────┐   8 güvenli fonksiyon
+┌─────────────────┐   8 safe functions
 │  tools.py       │
 └─────────────────┘
       │
       ▼
-┌─────────────────┐   Kural tabanlı doğrulama (maks. irtifa, batarya, durum...)
-│  safety.py      │──▶ güvensiz/eksik komutları REDDEDER
+┌─────────────────┐   Rule-based validation (max altitude, battery, state...)
+│  safety.py      │──▶ REJECTS unsafe/incomplete commands
 └─────────────────┘
       │
       ▼
-┌─────────────────┐   3B durum: x, y, altitude, mode, battery, in_air
+┌─────────────────┐   3D state: x, y, altitude, mode, battery, in_air
 │  simulation.py  │
 └─────────────────┘
       │
       ▼
-┌─────────────────┐   Her etkileşimi JSON + CSV olarak kaydeder
+┌─────────────────┐   Records every interaction as JSON + CSV
 │  logger.py      │
 └─────────────────┘
 ```
 
-## Modüller
+## Modules
 
-| Dosya | Görev |
-|-------|-------|
-| `uav_assistant/simulation.py` | Sınıf tabanlı basit 3B drone simülasyonu ve durum yönetimi. |
-| `uav_assistant/safety.py` | Güvenlik katmanı: tool call'ları uygulanmadan önce kurallarla doğrular. |
-| `uav_assistant/tools.py` | 8 güvenli araç fonksiyonu + LLM tool-calling şeması. |
-| `uav_assistant/agent.py` | Doğal dil arayüzü (hibrit NLU) + çok-adımlı görev planlama. |
-| `uav_assistant/logger.py` | JSON/CSV loglama sistemi. |
-| `uav_assistant/scenario_generator.py` | Özgün özellik: rastgele senaryo üreticisi. |
-| `uav_assistant/visualize.py` | Özgün özellik: uçuş izi/engel/yasak bölge HTML haritası. |
-| `demo_mission.py` | Engelli ortamda uçtan uca demo + harita üretimi. |
-| `web_app.py` | Özgün özellik: canlı 2B web panosu (tarayıcıda görsel ortam). |
-| `main.py` | İnteraktif komut satırı arayüzü (REPL). |
-| `test_scenarios.py` | 23 doğal dil komutu + 8 özgün özellik testi. |
-| `IHA_Pilot_Asistani_Teknik_Rapor.docx` | Kısa teknik rapor (mimari, gerekçe, güvenlik, test, sınırlılıklar). |
+| File | Purpose |
+|------|---------|
+| `uav_assistant/simulation.py` | Simple class-based 3D drone simulation and state management. |
+| `uav_assistant/safety.py` | Safety layer: validates tool calls against rules before execution. |
+| `uav_assistant/tools.py` | 8 safe tool functions + LLM tool-calling schema. |
+| `uav_assistant/agent.py` | Natural-language interface (hybrid NLU) + multi-step mission planning. |
+| `uav_assistant/logger.py` | JSON/CSV logging system. |
+| `uav_assistant/scenario_generator.py` | Original feature: random scenario generator. |
+| `uav_assistant/visualize.py` | Original feature: HTML map of flight path / obstacles / no-fly zones. |
+| `demo_showcase.py` | End-to-end capability showcase. |
+| `web_app.py` | Original feature: live 2D web dashboard (visual environment in the browser). |
+| `main.py` | Interactive command-line interface (REPL). |
+| `test_scenarios.py` | 23 natural-language commands + 8 original-feature tests. |
+| `test_llm_scenarios.py` | Human-style evaluation set (rule-based vs. LLM). |
+| `SETUP.md` | Step-by-step setup and run guide. |
 
-## Kurulum
+## Installation
 
-Python 3.9+ yeterlidir. **Varsayılan (offline) mod hiçbir harici bağımlılık gerektirmez** — yalnızca standart kütüphane kullanır.
+Python 3.9+ is enough. **The default (offline) mode needs no external dependencies** — it uses only the standard library.
 
 ```bash
-cd "MTA-IHA LLM-Defne Turgut"
-python -m venv .venv            # (isteğe bağlı)
+git clone https://github.com/defneturgut/IHA-LLM-Pilot-Assistant.git
+cd IHA-LLM-Pilot-Assistant
+python -m venv .venv            # (optional)
 source .venv/bin/activate       # Windows: .venv\Scripts\activate
 ```
 
-### Gerçek LLM modu (opsiyonel)
+### Real LLM mode (optional)
 
-Sistem üç sağlayıcıyı destekler; `UAV_LLM_PROVIDER` ile seçilir (`auto` varsayılan). Sağlayıcıdan bağımsız olarak LLM yalnızca güvenli fonksiyonları çağırır; güvenlik katmanı her koşulda uygulanır. Erişilebilir sağlayıcı yoksa otomatik olarak kural tabanlı moda düşer.
+The system supports three providers, selected with `UAV_LLM_PROVIDER` (default `auto`). Regardless of the provider, the LLM only calls safe functions and the safety layer is always enforced. If no provider is reachable, it automatically falls back to rule-based mode.
 
-**Ollama (yerel, ücretsiz, önerilen):** API anahtarı gerekmez.
+**Ollama (local, free, recommended):** no API key required.
 
 ```bash
-# 1) Ollama'yı kur (https://ollama.com) ve tool-calling destekleyen bir model çek
-ollama pull llama3.1            # veya: qwen2.5, mistral
-# 2) Asistanı Ollama ile çalıştır
+# 1) Install Ollama (https://ollama.com) and pull a model that supports tool calling
+ollama pull llama3.1            # or: qwen2.5, mistral
+# 2) Run the assistant with Ollama
 export UAV_LLM_PROVIDER=ollama  # $env:UAV_LLM_PROVIDER = "ollama"
 export UAV_LLM_MODEL=llama3.1   # $env:UAV_LLM_MODEL = "llama3.1"
 python main.py --llm
 ```
 
-**Bulut (opsiyonel):**
+**Cloud (optional):**
 
 ```bash
-pip install anthropic              # veya: pip install openai
-export ANTHROPIC_API_KEY="..."     # veya OPENAI_API_KEY
+pip install anthropic              # or: pip install openai
+export ANTHROPIC_API_KEY="..."     # or OPENAI_API_KEY
 python main.py --llm
 ```
 
-İlgili ortam değişkenleri: `UAV_LLM_PROVIDER` (auto/ollama/anthropic/openai), `UAV_LLM_MODEL`, `OLLAMA_HOST` (varsayılan http://localhost:11434).
+Relevant environment variables: `UAV_LLM_PROVIDER` (auto/ollama/anthropic/openai), `UAV_LLM_MODEL`, `OLLAMA_HOST` (default http://localhost:11434).
 
-## Çalıştırma
+## Running
 
 ```bash
-python test_scenarios.py                              # 23 senaryo + 8 özgün (31 test)
-python main.py                                        # interaktif (offline)
-python main.py --llm                                  # gerçek LLM (API anahtarı ile)
-python -m uav_assistant.scenario_generator --n 15     # rastgele senaryolar
-python demo_mission.py                                # engelli demo + mission_map.html
-python web_app.py                                     # canlı 2B web panosu -> http://127.0.0.1:8000
+python test_scenarios.py                              # 23 scenarios + 8 original (31 tests)
+python main.py                                        # interactive (offline)
+python main.py --llm                                  # real LLM
+python -m uav_assistant.scenario_generator --n 15     # random scenarios
+python demo_showcase.py                               # capability showcase
+python web_app.py                                     # live 2D web dashboard -> http://127.0.0.1:8000
 ```
 
-## Örnek komutlar
+## Example commands
 
-| Komut | Sonuç |
-|-------|-------|
-| `durum nedir?` | ✅ Telemetriyi doğal dille açıklar |
-| `20 metreye kalk` | ✅ Güvenli kalkış |
-| `30, 40 noktasına git` | ✅ Belirtilen konuma gidiş (go_to) |
-| `iniş yap` | ✅ İniş (havadaysa) |
-| `eve dön` | ✅ Return-to-home + iniş |
-| `kalk, 30 40 noktasına git, durum bildir ve eve dön` | ✅ Çok-adımlı görev planı |
-| `500 metreye kalk` | ⛔ Maks. irtifa aşımı → reddedilir |
-| `kalkış yap` | ❓ İrtifa belirsiz → açıklama ister |
-| `4 sağa git`, `20 yukarı çık` | ✅ Yönlü/göreli hareket (move) |
-| `menzil ne kadar, eve dönebilir miyim` | ✅ Enerji/menzil tahmini |
-| `30 30 noktasına git` (engel) | ⛔ Rota engelden geçiyor → reddedilir |
-| `önünde 1 metre engel var` | 🛟 Otonom kaçınma (uzaklaş) veya hover |
-| `roll açısını 30'a ayarla` | ⛔ Düşük seviyeli kontrol → reddedilir |
+| Command (Turkish) | Meaning | Result |
+|-------------------|---------|--------|
+| `durum nedir?` | "what's the status?" | ✅ Explains telemetry in natural language |
+| `20 metreye kalk` | "take off to 20 m" | ✅ Safe takeoff |
+| `30, 40 noktasına git` | "go to point 30, 40" | ✅ Flies to the given position (go_to) |
+| `iniş yap` | "land" | ✅ Lands (if airborne) |
+| `eve dön` | "return home" | ✅ Return-to-home + landing |
+| `kalk, 30 40 noktasına git, durum bildir ve eve dön` | "take off, go to 30 40, report status and return home" | ✅ Multi-step mission plan |
+| `500 metreye kalk` | "take off to 500 m" | ⛔ Exceeds max altitude → rejected |
+| `kalkış yap` | "take off" | ❓ Altitude ambiguous → asks for clarification |
+| `4 sağa git`, `20 yukarı çık` | "move 4 right", "climb 20 up" | ✅ Directional/relative movement (move) |
+| `menzil ne kadar, eve dönebilir miyim` | "what's the range, can I make it home?" | ✅ Energy/range estimate |
+| `30 30 noktasına git` (obstacle) | "go to point 30 30" | ⛔ Route crosses an obstacle → rejected |
+| `önünde 1 metre engel var` | "obstacle 1 m ahead" | 🛟 Autonomous avoidance (move away) or hover |
+| `roll açısını 30'a ayarla` | "set roll angle to 30" | ⛔ Low-level control → rejected |
 
-## Güvenlik kuralları (safety.py)
+## Safety rules (safety.py)
 
-- Maksimum irtifa sınırı (varsayılan **120 m**) aşılamaz.
-- Kalkış için batarya **%20**'nin altındaysa reddedilir.
-- `go_to` ve `move` için yatay çalışma alanı sınırı **±500 m**.
-- Hareket rotası bir **engel** veya **uçuşa yasak bölgeden** geçiyorsa reddedilir.
-- Havadayken tekrar kalkış, yerdeyken iniş gibi mantıksız komutlar reddedilir.
-- Belirsiz komutta (irtifa/koordinat yoksa) **varsayım yapılmaz**, açıklama istenir.
-- Düşük seviyeli kontrol denemeleri (PWM/roll/pitch/yaw/motor) her koşulda reddedilir.
+- The maximum altitude limit (default **120 m**) cannot be exceeded.
+- Takeoff is rejected if the battery is below **20%**.
+- Horizontal working area limit for `go_to` and `move` is **±500 m**.
+- A move is rejected if its route passes through an **obstacle** or a **no-fly zone**.
+- Illogical commands, such as taking off while airborne or landing while on the ground, are rejected.
+- For ambiguous commands (no altitude/coordinates) **no assumptions are made**; clarification is requested.
+- Low-level control attempts (PWM/roll/pitch/yaw/motor) are always rejected.
 
-## Özgün özellikler
+## Original features
 
-- **Çok-adımlı görev planlama:** tek cümlede birden çok görev ("kalk, git, durum bildir, eve dön") sırayla ve her biri güvenlik katmanından geçirilerek çalıştırılır.
-- **Batarya bazlı otomatik eve dönüş önerisi:** batarya %30 altına inince ajan, eylem uygulamadan güvenli eve dönüş önerir.
-- **Rastgele senaryo üreticisi:** farklı ifade varyasyonlarıyla sistemi otomatik sınar.
-- **Aksan-duyarsız NLU:** "çık/cik", "iniş/inis", "dön/don" gibi Türkçe varyasyonlar aynı tanınır.
-- **Yönlü/göreli hareket (move):** "20 yukarı çık", "4 sağa git", "8 aşağı in" gibi komutlar konumu doğru günceller.
-- **Engel + uçuşa yasak bölge (geofence):** simülasyondaki engel/yasak bölgeler; güvenlik katmanı hareket rotasını kontrol eder, çarpışan/yasak rotaları reddeder.
-- **Enerji/menzil tahmini:** kalan menzil, eve dönüş maliyeti ve "eve güvenle dönebilir miyim?" hesabı (`get_energy_status`).
-- **Görsel harita:** uçuş izini, engelleri, yasak bölgeleri ve güncel konumu gösteren tek dosyalık HTML/SVG harita (REPL'de `harita` komutu veya `demo_mission.py`).
-- **Otonom engel kaçınma (avoid_obstacle):** "önünde engel var / engel çıktı" komutunda drone güvenli otonom karar verir — engele yakınsa uzaklaşır, uzaksa hover; kararını gerekçesiyle açıklar. "1 metre engel var" gibi ifadelerde dinamik engel ekler.
-- **LLM "uydurma" koruması + kural tabanlı geri düşüş:** LLM geçersiz/uydurma çıktı verirse sistem deterministik kural tabanlı ayrıştırıcıya düşer.
-- **Gelişmiş LLM entegrasyonu:** en iyi kurulu Ollama modelini otomatik seçme, temperature=0, canlı durum bağlamı, argüman normalizasyonu.
-- **Canlı 2B web panosu (`web_app.py`):** tarayıcıda çalışan görsel ortam; komut yazdıkça drone, engeller, yasak bölgeler ve uçuş izi canlı güncellenir, telemetri + karar gösterilir. Sadece stdlib.
+- **Multi-step mission planning:** multiple tasks in a single sentence ("take off, go, report status, return home") are executed in order, each passing through the safety layer.
+- **Battery-based automatic return-to-home suggestion:** when the battery drops below 30%, the agent suggests a safe return home without executing any action.
+- **Random scenario generator:** automatically tests the system with different phrasing variations.
+- **Accent-insensitive NLU:** Turkish variants such as "çık/cik", "iniş/inis", "dön/don" are recognized the same way.
+- **Directional/relative movement (move):** commands like "climb 20 up", "move 4 right", "descend 8" update the position correctly.
+- **Obstacles + no-fly zones (geofence):** obstacles/no-fly zones in the simulation; the safety layer checks the movement route and rejects colliding/forbidden routes.
+- **Energy/range estimation:** remaining range, cost of returning home and a "can I safely make it home?" calculation (`get_energy_status`).
+- **Visual map:** a single-file HTML/SVG map showing the flight path, obstacles, no-fly zones and current position (the `harita` ["map"] command in the REPL).
+- **Autonomous obstacle avoidance (avoid_obstacle):** on "obstacle ahead / obstacle appeared", the drone makes a safe autonomous decision — moves away if the obstacle is close, hovers if it is far — and explains its reasoning. Phrases like "1 m obstacle" add a dynamic obstacle.
+- **LLM "hallucination" guard + rule-based fallback:** if the LLM returns invalid/made-up output, the system falls back to the deterministic rule-based parser.
+- **Advanced LLM integration:** automatic selection of the best installed Ollama model, temperature=0, live state context, argument normalization.
+- **Live 2D web dashboard (`web_app.py`):** a visual environment in the browser; as you type commands, the drone, obstacles, no-fly zones and flight path update live, with telemetry + decisions shown. Standard library only.
 
-## Loglama
+## Logging
 
-Her etkileşim `logs/mission_log.json` ve `logs/mission_log.csv` dosyalarına kaydedilir: zaman damgası, gelen komut, yorumlanan aksiyon, argümanlar, güvenlik kararı, başarı durumu, mesaj ve o anki telemetri.
+Every interaction is recorded in `logs/mission_log.json` and `logs/mission_log.csv`: timestamp, incoming command, interpreted action, arguments, safety decision, success status, message and current telemetry.
 
-## Test kapsamı
+## Test coverage
 
-`test_scenarios.py`: 23 senaryo + 6 özgün özellik testi (çok-adımlı planlama, batarya önerisi, yönlü hareket, geofence, enerji/menzil, görsel h
+`test_scenarios.py`: 23 scenarios + 8 original-feature tests (multi-step planning, battery suggestion, directional movement, geofence, energy/range, visual map, and more).

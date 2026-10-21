@@ -5,14 +5,14 @@ __pycache__/
 .venv/
 venv/
 
-# İşletim sistemi / editör
+# OS / editor
 .DS_Store
 ~$*
 *.tmp
 
-# Loglar (isteğe bağlı — teslimde tutmak isterseniz bu satırı silin)
+# Logs (optional — delete this line to keep them in the repo)
 # logs/
-# Büyük dosyalar / model ağırlıkları / veri setleri
+# Large files / model weights / datasets
 *.zip
 *.pt
 *.pth
@@ -25,7 +25,7 @@ data/
 datasets/
 models/
 
-# Gizli bilgiler
+# Secrets
 .env
 .env.*
 *.pem
@@ -36,6 +36,6 @@ credentials.*
 # Node
 node_modules/
 
-# Kasıtlı olarak depoya alınmayanlar (yerelde duruyor)
+# Intentionally kept out of the repo (local only)
 belgeler/
 arsiv/
